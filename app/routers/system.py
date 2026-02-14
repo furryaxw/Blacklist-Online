@@ -10,14 +10,27 @@ from app.utils.models import User, Role, SystemConfig, BlacklistEntry, SyncEvent
 from app.utils.notifier import Notifier, send_bot_msg, send_email_sync
 from app.utils.permissions import check_role
 
+SENSITIVE_KEYS = {
+    "MAIL_PASS",
+    "SECRET_KEY",
+    "ONEBOT_ACCESS_TOKEN",
+    "DB_PASSWORD"
+}
+
 
 # === 基础配置管理 ===
 async def get_system_config(session: Session, user: User):
     check_role(user, [Role.OWNER, Role.SUPER_ADMIN])
     configs = session.exec(select(SystemConfig)).all()
 
-    # 构造返回字典，如果没有值则返回空字符串
-    result = {c.key: c.value for c in configs}
+    result = {}
+    for c in configs:
+        if c.key in SENSITIVE_KEYS and c.value:
+            # 如果有值，返回脱敏占位符；如果是空，返回空字符串
+            result[c.key] = "******"
+        else:
+            result[c.key] = c.value
+
     return result
 
 

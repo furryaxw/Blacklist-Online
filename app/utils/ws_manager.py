@@ -10,7 +10,18 @@ from sqlmodel import Session, select
 from app.utils.database import engine_sys, binds
 from app.utils.logging import logger
 from app.utils.models import User
-from app.utils.sessions import session_store
+from app.utils.sessions import session_store, rate_limiter
+
+# 定义动作限流规则配置 (次数, 秒数)
+# 越敏感、消耗越大的操作，限制越严
+ACTION_LIMITS = {
+    "auth.send_code": (1, 60),  # 1分钟1次
+    "admin.logs.export": (1, 300),  # 5分钟1次 (高IO操作)
+    "admin.system.backup": (1, 3600),  # 1小时1次
+    "admin.blacklist.list": (10, 60),  # 1分钟10次 (防止爬虫)
+    "public.appeal.submit": (3, 3600),  # 1小时3次
+    "default": (60, 60)  # 默认 1秒1次
+}
 
 
 class WebSocketManager:
@@ -90,6 +101,28 @@ class WebSocketManager:
         elif websocket.headers.get("x-real-ip"):
             _real_ip = websocket.headers.get("x-real-ip")
         client_ip = _real_ip if _real_ip else "unknown"
+
+        # --- 业务级限流检查 ---
+        # 1. 确定限流键 (优先使用 User ID，未登录使用 IP)
+        session_user = self.authenticated_connections.get(websocket)
+        limit_key = f"ws:{session_user.qq}" if session_user else f"ws_ip:{client_ip}"
+
+        # 2. 获取该动作的限制规则
+        limit_count, limit_window = ACTION_LIMITS.get(action, ACTION_LIMITS["default"])
+
+        # 3. 构造具体的限流标识 (Key + Action)
+        # 这样同一个用户，搜索和导出日志的限流是分开计算的
+        specific_key = f"{limit_key}:{action}"
+
+        if not rate_limiter.is_allowed(specific_key, limit_count, limit_window):
+            # 触发限流，直接返回错误，不处理业务
+            logger.warning(f"Rate limit exceeded: {specific_key}")
+            await websocket.send_json({
+                "req_id": req_id,
+                "code": 429,
+                "msg": "操作过于频繁，请稍后再试"
+            })
+            return
 
         # 默认响应
         response = {"req_id": req_id, "code": 200, "data": None, "msg": "ok"}
@@ -211,7 +244,8 @@ class WebSocketManager:
                 elif action == "admin.system.test_msg":
                     response["data"] = await system.test_bot_message(session, session_user, payload.get("target_qq"))
                 elif action == "admin.system.test_email":
-                    response["data"] = await system.test_email_settings(session, session_user, payload.get("target_email"))
+                    response["data"] = await system.test_email_settings(session, session_user,
+                                                                        payload.get("target_email"))
 
                 # [Admin: Users]
                 elif action == "admin.users.list":

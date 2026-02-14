@@ -1,10 +1,11 @@
 import asyncio
+import io
 import os
-import shutil
 import time
 import uuid
 from contextlib import asynccontextmanager
 
+from PIL import Image, UnidentifiedImageError
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
@@ -23,6 +24,11 @@ from app.utils.ws_manager import ws_manager
 
 DATA_DIR = "data"
 UPLOAD_DIR = "data/uploads"
+
+# 1. 定义后缀白名单
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+# 2. 限制最大文件大小，防止 DoS
+MAX_FILE_SIZE = 20 * 1024 * 1024
 
 
 # 后台清理任务
@@ -224,21 +230,53 @@ def health_check():
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    # 简单校验
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(400, "仅支持图片文件")
+    # --- 阶段一：基础过滤 ---
+    filename_parts = file.filename.split(".")
+    if len(filename_parts) < 2:
+        raise HTTPException(400, "文件名格式错误")
 
-    # 生成文件名
-    ext = file.filename.split(".")[-1]
-    filename = f"{uuid.uuid4()}.{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
+    ext = filename_parts[-1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(400, "不支持的文件类型")
 
-    # 保存
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # --- 阶段二：内存级安全检查 ---
+    # 读取文件内容到内存
+    content = await file.read()
 
-    # 返回相对 URL
-    return {"url": f"/blacklist-api/uploads/{filename}"}
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(400, "文件大小超过限制")
+
+    try:
+        # 使用 Pillow 尝试打开，这会自动校验 Magic Number 和文件结构的完整性
+        image = Image.open(io.BytesIO(content))
+        image.verify()  # 仅校验结构，不解码图像数据，速度快
+
+        # 重新打开以便处理（verify后需要重新打开）
+        image = Image.open(io.BytesIO(content))
+    except (UnidentifiedImageError, Exception):
+        raise HTTPException(400, "无效的图像文件或文件已损坏")
+
+    # --- 阶段三：清洗与重构 (最关键的一步) ---
+    # 生成随机文件名
+    safe_filename = f"{uuid.uuid4()}.{ext}"
+    filepath = os.path.join(UPLOAD_DIR, safe_filename)
+
+    # ⚠️ 极其重要：不要直接保存原文件！
+    # 而是将 Pillow 读取到的图像对象，重新保存到磁盘。
+    # 这将剥离掉文件中所有非像素数据（包括潜在的 PHP/JS 恶意载荷）
+    try:
+        # 转换模式以兼容某些格式 (如把 P 模式转为 RGB)
+        if image.mode in ("RGBA", "P"):
+            image = image.convert("RGBA")
+        else:
+            image = image.convert("RGB")
+
+        image.save(filepath, quality=90)  # 重新编码保存
+    except Exception as e:
+        logger.error(f"文件清洗失败: {e}")
+        raise HTTPException(500, "文件处理失败")
+
+    return {"url": f"/blacklist-api/uploads/{safe_filename}"}
 
 
 # =======================
