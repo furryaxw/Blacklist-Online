@@ -138,6 +138,26 @@
               </n-descriptions>
             </n-card>
 
+            <n-card size="small" title="🛡️ 安全与隐私" style="margin-bottom: 16px">
+              <n-grid :cols="isMobile ? 1 : 2" :x-gap="24">
+                <n-form-item-gi label="加强安全模式">
+                  <n-space vertical :size="0">
+                    <n-switch
+                        v-model:value="sysConfig.ENABLE_SENSITIVE_MASKING"
+                        checked-value="true"
+                        unchecked-value="false"
+                    >
+                      <template #checked>开启</template>
+                      <template #unchecked>关闭</template>
+                    </n-switch>
+                    <div style="font-size: 12px; color: #888; margin-top: 4px">
+                      开启后，API 返回的敏感配置（如密码、密钥）将以星号脱敏显示。
+                    </div>
+                  </n-space>
+                </n-form-item-gi>
+              </n-grid>
+            </n-card>
+
             <n-card size="small" title="🛡️ 注册与权限" style="margin-bottom: 16px">
               <n-grid :cols="isMobile ? 1 : 2" :x-gap="24" :y-gap="isMobile ? 12 : 0">
                 <n-form-item-gi label="自动注册">
@@ -289,33 +309,33 @@
     </n-modal>
 
     <n-modal
-      v-model:show="showConfirmModal"
-      preset="dialog"
-      title="⚠️ 确认保存变更"
-      positive-text="确认提交"
-      negative-text="取消"
-      @positive-click="executeSave"
-      @negative-click="showConfirmModal = false"
-      style="width: 500px"
+        v-model:show="showConfirmModal"
+        preset="dialog"
+        title="⚠️ 确认保存变更"
+        positive-text="确认提交"
+        negative-text="取消"
+        @positive-click="executeSave"
+        @negative-click="showConfirmModal = false"
+        style="width: 500px"
     >
       <div v-if="Object.keys(pendingChanges).length > 0">
         <p>检测到以下配置项将被修改：</p>
         <n-table size="small" :single-line="false">
           <thead>
-            <tr>
-              <th>配置项</th>
-              <th>原值</th>
-              <th>新值</th>
-            </tr>
+          <tr>
+            <th>配置项</th>
+            <th>原值</th>
+            <th>新值</th>
+          </tr>
           </thead>
           <tbody>
-            <tr v-for="(change, key) in pendingChanges" :key="key">
-              <td>{{ getFieldLabel(key) }} <br/><span style="font-size: 10px; color: #999">({{ key }})</span></td>
-              <td style="color: #999; word-break: break-all">{{ formatValue(change.oldVal) }}</td>
-              <td style="color: var(--n-primary-color); font-weight: bold; word-break: break-all">
-                {{ formatValue(change.newVal) }}
-              </td>
-            </tr>
+          <tr v-for="(change, key) in pendingChanges" :key="key">
+            <td>{{ getFieldLabel(key) }} <br/><span style="font-size: 10px; color: #999">({{ key }})</span></td>
+            <td style="color: #999; word-break: break-all">{{ formatValue(change.oldVal) }}</td>
+            <td style="color: var(--n-primary-color); font-weight: bold; word-break: break-all">
+              {{ formatValue(change.newVal) }}
+            </td>
+          </tr>
           </tbody>
         </n-table>
       </div>
@@ -327,7 +347,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref, watch, toRaw} from 'vue'
+import {onMounted, onUnmounted, ref, watch} from 'vue'
 import {
   NButton,
   NCard,
@@ -349,10 +369,10 @@ import {
   NSelect,
   NSpace,
   NSwitch,
+  NTable,
   NTabPane,
   NTabs,
   NTag,
-  NTable,
   useMessage
 } from 'naive-ui'
 import {wsClient} from '../api/ws'
@@ -438,7 +458,7 @@ const fetchConfig = async () => {
       DEFAULT_KEY_PERMS: res.DEFAULT_KEY_PERMS ? res.DEFAULT_KEY_PERMS.split(',') : ['read', 'write']
     }
 
-    sysConfig.value = { ...processedConfig }
+    sysConfig.value = {...processedConfig}
 
     // 关键：深拷贝一份作为原始对照组
     // 使用 JSON.parse/stringify 简单深拷贝，足以应对配置数据
@@ -453,6 +473,7 @@ const fetchConfig = async () => {
 const fieldLabels: Record<string, string> = {
   SESSION_TIMEOUT: '会话超时',
   CODE_TIMEOUT: '验证码有效期',
+  ENABLE_SENSITIVE_MASKING: '加强安全模式',
   ENABLE_AUTO_REG: '自动注册开关',
   DEFAULT_AUTO_ROLE: '自动注册默认角色',
   DEFAULT_KEY_PERMS: 'API Key 默认权限',
@@ -485,14 +506,14 @@ const saveConfig = () => {
     if (Array.isArray(newVal) && Array.isArray(oldVal)) {
       // 简单排序后比较字符串
       if ([...newVal].sort().toString() !== [...oldVal].sort().toString()) {
-        changes[key] = { oldVal, newVal }
+        changes[key] = {oldVal, newVal}
       }
       continue
     }
 
     // 普通类型比较 (转为字符串比较以避免数字/字符串类型不一致问题)
     if (String(newVal) !== String(oldVal)) {
-      changes[key] = { oldVal, newVal }
+      changes[key] = {oldVal, newVal}
     }
   }
 
@@ -533,7 +554,7 @@ const executeSave = async () => {
     // 保存成功后，更新本地快照，避免重复提示
     // 注意：这里需要把 pendingChanges 应用到 originalConfig
     for (const key in pendingChanges.value) {
-       originalConfig.value[key] = pendingChanges.value[key].newVal
+      originalConfig.value[key] = pendingChanges.value[key].newVal
     }
 
   } catch (e: any) {
