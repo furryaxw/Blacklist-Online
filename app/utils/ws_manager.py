@@ -15,12 +15,11 @@ from app.utils.sessions import session_store, rate_limiter
 # 定义动作限流规则配置 (次数, 秒数)
 # 越敏感、消耗越大的操作，限制越严
 ACTION_LIMITS = {
-    "auth.send_code": (1, 60),  # 1分钟1次
     "admin.logs.export": (1, 300),  # 5分钟1次 (高IO操作)
     "admin.system.backup": (1, 3600),  # 1小时1次
-    "admin.blacklist.list": (10, 60),  # 1分钟10次 (防止爬虫)
-    "public.appeal.submit": (3, 3600),  # 1小时3次
-    "default": (60, 60)  # 默认 1秒1次
+    "public.appeal.submit": (5, 3600),  # 1小时5次
+    "admin.blacklist.list": (20, 60),  # 1分钟20次
+    "default": (120, 60)  # 默认 1秒2次
 }
 
 

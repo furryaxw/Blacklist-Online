@@ -213,11 +213,7 @@ async def submit_appeal(session: Session, payload: dict, client_ip: str):
     if not email or not email.strip():
         email = f"{qq}@qq.com"
 
-    # 1. 限流 (IP 限制)
-    if not rate_limiter.is_allowed(f"appeal_ip:{client_ip}", limit=5, window=3600):
-        raise Exception("请求过于频繁，请稍后再试")
-
-    # 2. 检查 QQ 是否真的在黑名单中 (且处于生效状态)
+    # 1. 检查 QQ 是否真的在黑名单中 (且处于生效状态)
     entry = session.exec(
         select(BlacklistEntry).where(BlacklistEntry.user_id == qq, BlacklistEntry.disabled == False)
     ).first()
@@ -225,7 +221,7 @@ async def submit_appeal(session: Session, payload: dict, client_ip: str):
     if not entry:
         raise Exception("该账号当前未处于黑名单中，无需申诉")
 
-    # 3. 检查是否重复提交
+    # 2. 检查是否重复提交
     existing_app = session.exec(
         select(Application).where(
             Application.target_user_id == qq,
@@ -236,7 +232,7 @@ async def submit_appeal(session: Session, payload: dict, client_ip: str):
     if existing_app:
         raise Exception("您已提交过申诉，请耐心等待管理员处理")
 
-    # 4. 创建申请
+    # 3. 创建申请
     evidence_list = []
     if images:
         evidence_list.append({
