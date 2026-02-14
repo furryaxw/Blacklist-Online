@@ -287,11 +287,47 @@
         <n-button type="primary" :loading="testingEmail" @click="runTestEmail">发送</n-button>
       </template>
     </n-modal>
+
+    <n-modal
+      v-model:show="showConfirmModal"
+      preset="dialog"
+      title="⚠️ 确认保存变更"
+      positive-text="确认提交"
+      negative-text="取消"
+      @positive-click="executeSave"
+      @negative-click="showConfirmModal = false"
+      style="width: 500px"
+    >
+      <div v-if="Object.keys(pendingChanges).length > 0">
+        <p>检测到以下配置项将被修改：</p>
+        <n-table size="small" :single-line="false">
+          <thead>
+            <tr>
+              <th>配置项</th>
+              <th>原值</th>
+              <th>新值</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(change, key) in pendingChanges" :key="key">
+              <td>{{ getFieldLabel(key) }} <br/><span style="font-size: 10px; color: #999">({{ key }})</span></td>
+              <td style="color: #999; word-break: break-all">{{ formatValue(change.oldVal) }}</td>
+              <td style="color: var(--n-primary-color); font-weight: bold; word-break: break-all">
+                {{ formatValue(change.newVal) }}
+              </td>
+            </tr>
+          </tbody>
+        </n-table>
+      </div>
+      <div v-else>
+        <p>未检测到任何变更。</p>
+      </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref, watch} from 'vue'
+import {onMounted, onUnmounted, ref, watch, toRaw} from 'vue'
 import {
   NButton,
   NCard,
@@ -316,6 +352,7 @@ import {
   NTabPane,
   NTabs,
   NTag,
+  NTable,
   useMessage
 } from 'naive-ui'
 import {wsClient} from '../api/ws'
@@ -351,6 +388,10 @@ const subs = ref<Subscriptions>({
 
 // 状态
 const sysConfig = ref<any>({ONEBOT_API_URL: '', DEFAULT_KEY_PERMS: ['read', 'write']})
+const originalConfig = ref<any>({})
+const showConfirmModal = ref(false)
+const pendingChanges = ref<Record<string, { oldVal: any, newVal: any }>>({})
+
 const logDays = ref(30)
 const saving = ref(false)
 const testingBot = ref(false)
@@ -387,28 +428,116 @@ const fetchConfig = async () => {
   if (!['owner', 'super_admin'].includes(userStore.userInfo.role)) return
   try {
     const res: any = await wsClient.call('admin.system.get')
-    sysConfig.value = {
-      ...sysConfig.value,
+
+    // 处理数据格式
+    const processedConfig = {
       ...res,
       SESSION_TIMEOUT: Number(res.SESSION_TIMEOUT || 1800),
       CODE_TIMEOUT: Number(res.CODE_TIMEOUT || 300),
+      // 保持数组格式用于前端组件
       DEFAULT_KEY_PERMS: res.DEFAULT_KEY_PERMS ? res.DEFAULT_KEY_PERMS.split(',') : ['read', 'write']
     }
+
+    sysConfig.value = { ...processedConfig }
+
+    // 关键：深拷贝一份作为原始对照组
+    // 使用 JSON.parse/stringify 简单深拷贝，足以应对配置数据
+    originalConfig.value = JSON.parse(JSON.stringify(processedConfig))
+
   } catch (e) {
+    message.error('获取系统配置失败')
   }
 }
 
-const saveConfig = async () => {
-  saving.value = true
-  try {
-    // 转换数组为字符串
-    const payload = {
-      ...sysConfig.value,
-      DEFAULT_KEY_PERMS: sysConfig.value.DEFAULT_KEY_PERMS.join(',')
+// === 新增：配置项名称映射（用于弹窗显示中文名） ===
+const fieldLabels: Record<string, string> = {
+  SESSION_TIMEOUT: '会话超时',
+  CODE_TIMEOUT: '验证码有效期',
+  ENABLE_AUTO_REG: '自动注册开关',
+  DEFAULT_AUTO_ROLE: '自动注册默认角色',
+  DEFAULT_KEY_PERMS: 'API Key 默认权限',
+  ONEBOT_API_URL: 'OneBot API 地址',
+  MAIL_HOST: 'SMTP 服务器',
+  MAIL_PORT: 'SMTP 端口',
+  MAIL_USER: 'SMTP 账号',
+  MAIL_PASS: 'SMTP 密码',
+  MAIL_FROM: '发件人地址'
+}
+
+const getFieldLabel = (key: string) => fieldLabels[key] || key
+
+const formatValue = (val: any) => {
+  if (Array.isArray(val)) return val.join(',')
+  if (val === '') return '(空)'
+  return val
+}
+
+// === 修改：点击保存按钮（触发比对） ===
+const saveConfig = () => {
+  const changes: Record<string, { oldVal: any, newVal: any }> = {}
+
+  // 遍历当前配置进行比对
+  for (const key in sysConfig.value) {
+    let newVal = sysConfig.value[key]
+    let oldVal = originalConfig.value[key]
+
+    // 特殊处理：数组比较 (针对权限复选框)
+    if (Array.isArray(newVal) && Array.isArray(oldVal)) {
+      // 简单排序后比较字符串
+      if ([...newVal].sort().toString() !== [...oldVal].sort().toString()) {
+        changes[key] = { oldVal, newVal }
+      }
+      continue
     }
+
+    // 普通类型比较 (转为字符串比较以避免数字/字符串类型不一致问题)
+    if (String(newVal) !== String(oldVal)) {
+      changes[key] = { oldVal, newVal }
+    }
+  }
+
+  // 检查是否为空
+  if (Object.keys(changes).length === 0) {
+    message.info('未检测到任何配置变更')
+    return
+  }
+
+  pendingChanges.value = changes
+  showConfirmModal.value = true
+}
+
+// === 新增：执行真正的保存 ===
+const executeSave = async () => {
+  showConfirmModal.value = false
+  saving.value = true
+
+  try {
+    const payload: Record<string, any> = {}
+
+    // 只提取变更了的字段构建 Payload
+    for (const key in pendingChanges.value) {
+      let val = pendingChanges.value[key].newVal
+
+      // 特殊处理：后端需要逗号分隔的字符串
+      if (key === 'DEFAULT_KEY_PERMS' && Array.isArray(val)) {
+        val = val.join(',')
+      }
+
+      payload[key] = val
+    }
+
+    // 发送增量数据
     await wsClient.call('admin.system.update', payload)
-    message.success('配置已保存')
-  } catch (e) {
+    message.success('配置已更新')
+
+    // 保存成功后，更新本地快照，避免重复提示
+    // 注意：这里需要把 pendingChanges 应用到 originalConfig
+    for (const key in pendingChanges.value) {
+       originalConfig.value[key] = pendingChanges.value[key].newVal
+    }
+
+  } catch (e: any) {
+    message.error(e.message || '保存失败')
   } finally {
     saving.value = false
   }
