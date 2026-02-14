@@ -95,6 +95,8 @@ async def lifespan(app: FastAPI):
                 session.add(SystemConfig(key="SESSION_TIMEOUT", value="1800", description="会话超时时间(秒)"))
             if not session.get(SystemConfig, "CODE_TIMEOUT"):
                 session.add(SystemConfig(key="CODE_TIMEOUT", value="300", description="验证码有效期(秒)"))
+            if not session.get(SystemConfig, "ENABLE_SENSITIVE_MASKING"):
+                session.add(SystemConfig(key="ENABLE_SENSITIVE_MASKING", value="false", description="增强安全模式"))
             if not session.get(SystemConfig, "MAIL_HOST"):
                 session.add(SystemConfig(key="MAIL_HOST", value="smtp.qq.com", description="SMTP服务器"))
             if not session.get(SystemConfig, "MAIL_PORT"):

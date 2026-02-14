@@ -23,13 +23,21 @@ async def get_system_config(session: Session, user: User):
     check_role(user, [Role.OWNER, Role.SUPER_ADMIN])
     configs = session.exec(select(SystemConfig)).all()
 
+    # 将所有配置预先转换为字典，方便查找开关和遍历
+    config_map = {c.key: c.value for c in configs}
+
+    # 获取全局脱敏开关
+    # Key: ENABLE_SENSITIVE_MASKING
+    # 默认为 "true" (开启安全模式/脱敏)。如果设置为 "false"，则显示明文。
+    enable_masking = config_map.get("ENABLE_SENSITIVE_MASKING", "true").lower() == "true"
+
     result = {}
-    for c in configs:
-        if c.key in SENSITIVE_KEYS and c.value:
-            # 如果有值，返回脱敏占位符；如果是空，返回空字符串
-            result[c.key] = "******"
+    for key, value in config_map.items():
+        # 判断逻辑：如果开启了脱敏 且 是敏感字段 且 值不为空，则脱敏
+        if enable_masking and key in SENSITIVE_KEYS and value:
+            result[key] = "******"
         else:
-            result[c.key] = c.value
+            result[key] = value
 
     return result
 
