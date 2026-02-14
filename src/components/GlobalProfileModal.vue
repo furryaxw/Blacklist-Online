@@ -52,7 +52,24 @@
                 <span class="mono">{{ profileData.uid || '-' }}</span>
               </n-descriptions-item>
 
-              <n-descriptions-item label="注册时间">
+              <n-descriptions-item>
+                <template #label>
+                  <div style="display: flex; align-items: center">
+                    注册时间
+                    <n-tooltip
+                        :trigger="isMobile ? 'click' : 'hover'"
+                        :placement="isMobile ? 'top' : 'top-start'"
+                        :style="{ maxWidth: '240px' }"
+                    >
+                      <template #trigger>
+                        <n-icon size="14" style="margin-left: 4px; cursor: help; opacity: 0.6">
+                          <span style="font-style: normal">ⓘ</span>
+                        </n-icon>
+                      </template>
+                      QQ 官方接口将此项精度限制为年（向下取整）
+                    </n-tooltip>
+                  </div>
+                </template>
                 {{ formatDate(profileData.regTime) }}
               </n-descriptions-item>
 
@@ -122,7 +139,7 @@
                 <div class="warning-content">
                   <div><b>理由:</b> {{ blacklistInfo.reason }}</div>
                   <div class="sub-info">
-                    操作人: {{blacklistInfo.operator_id}}
+                    操作人: {{ blacklistInfo.operator_id }}
                     <br v-if="isMobile"/>
                     <span v-else> | </span>
                     时间: {{ new Date(blacklistInfo.updated_at).toLocaleDateString() }}
@@ -144,7 +161,19 @@
 
 <script setup lang="ts">
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
-import {NAlert, NAvatar, NButton, NCard, NDescriptions, NDescriptionsItem, NModal, NSpace, NSpin, NTag} from 'naive-ui'
+import {
+  NAlert,
+  NAvatar,
+  NButton,
+  NCard,
+  NDescriptions,
+  NDescriptionsItem,
+  NModal,
+  NSpace,
+  NSpin,
+  NTag,
+  NTooltip
+} from 'naive-ui'
 import {uiStore} from '../store/ui'
 import {wsClient} from '../api/ws'
 
