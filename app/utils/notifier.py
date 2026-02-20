@@ -317,9 +317,10 @@ class Notifier:
             action_cn = "取消"
         else:
             action_cn = "系统错误，请联系管理员"
-        if app.status == "ADD":
+
+        if app.type == "ADD":
             type_cn = "添加"
-        elif app.status == "REMOVE":
+        elif app.type == "REMOVE":
             type_cn = "删除"
         else:
             type_cn = "系统错误，请联系管理员"
