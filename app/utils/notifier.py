@@ -182,7 +182,15 @@ class Notifier:
         Notifier._save_log(session, "user.created", operator_qq, data)
 
         # 2. Bot 通知用户
-        msg = f"🛡️ [账号创建]\n管理员 {operator_qq} 为您创建了账号。\n当前权限: {new_user.role}"
+        msg = (
+            f"🛡️ [Blacklist Online 账号创建]\n"
+            f"您好！管理员 {operator_qq} 已为您开通了后台权限。\n\n"
+            f"📝 账号信息：\n"
+            f" - 当前权限: {new_user.role}\n"
+            f" - 绑定QQ: {new_user.qq}\n\n"
+            f"🌐 管理后台入口：\n"
+            f"https://www.furryaxw.top/Blacklist"
+        )
         await send_bot_msg(new_user.qq, msg)
 
     @staticmethod
