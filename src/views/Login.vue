@@ -97,8 +97,8 @@ const contactInfoHtml = ref('')
 const fetchPublicConfig = async () => {
   try {
     const res = await wsClient.call('admin.system.get_public')
-    if (res && res.CONTACT_INFO_MD) {
-      contactInfoHtml.value = await marked.parse(res.CONTACT_INFO_MD)
+    if (res && res.LOGIN_CONTACT_MD) {
+      contactInfoHtml.value = await marked.parse(res.LOGIN_CONTACT_MD)
     }
   } catch (e) {
     console.warn('获取联系信息失败:', e)
