@@ -52,7 +52,8 @@ async def get_public_system_config(session: Session, user: Optional[User] = None
     # 2. 定义允许公开的配置 Key (白名单)
     public_keys = [
         "DEFAULT_KEY_PERMS",
-        "CONTACT_INFO_MD"
+        "LOGIN_CONTACT_MD",
+        "DASHBOARD_CONTACT_MD"
     ]
 
     # 3. 查询并过滤
