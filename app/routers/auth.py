@@ -26,13 +26,33 @@ async def send_code(session: Session, payload: dict, client_ip: str, fingerprint
     if not rate_limiter.is_allowed(f"send_code:{qq}:{fingerprint}", limit=1, window=60):
         raise Exception("请求过于频繁，请稍后再试")
 
-    # 2. 黑名单拦截
+    # 2. 系统黑名单拦截 (修改提示引导申诉)
     if session.exec(
             select(BlacklistEntry).where(BlacklistEntry.user_id == qq, BlacklistEntry.disabled == False)).first():
         logger.warning(f"黑名单用户 {qq} 尝试获取验证码被拦截")
-        raise Exception("您已被列入黑名单，禁止登录")
+        raise Exception("您已被列入黑名单，请前往申诉页提交申诉以解除限制")
 
-    # 用户存在性检查...
+    # 3. 检查是否为 Bot 好友
+    try:
+        async with httpx.AsyncClient() as client:
+            friend_resp = await client.post(f"{settings.ONEBOT_API_URL}/get_friend_list")
+            if friend_resp.status_code == 200:
+                resp_data = friend_resp.json()
+                # 兼容不同 OneBot 实现的成功状态判断
+                if resp_data.get("status") == "ok" or resp_data.get("retcode") == 0:
+                    friends = resp_data.get("data", [])
+                    # 遍历判断QQ是否在好友列表中
+                    is_friend = any(str(f.get("user_id")) == str(qq) for f in friends)
+                    if not is_friend:
+                        raise Exception("请先添加Bot为好友后，再尝试获取验证码")
+    except Exception as e:
+        # 如果是我们主动抛出的“未加好友”异常，则向上抛出返回给前端
+        if "请先添加Bot为好友" in str(e):
+            raise e
+        # 如果是网络波动/Bot离线等异常，记录日志并跳过检查（避免Bot掉线导致完全无法登录）
+        logger.warning(f"获取Bot好友列表失败，跳过好友检查: {e}")
+
+    # 4. 用户存在性检查...
     user = session.exec(select(User).where(User.qq == qq)).first()
 
     if not user:
@@ -55,7 +75,7 @@ async def send_code(session: Session, payload: dict, client_ip: str, fingerprint
     # 使用 code_store 存储，自动清理过期数据
     code_store.set_code(qq, code)
 
-    # 调用 OneBot API
+    # 5. 调用 OneBot API 发送消息
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.post(f"{settings.ONEBOT_API_URL}/send_private_msg", json={

@@ -1,6 +1,7 @@
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 import httpx
 from sqlmodel import Session, select, delete
@@ -42,15 +43,16 @@ async def get_system_config(session: Session, user: User):
     return result
 
 
-async def get_public_system_config(session: Session, user: User):
-    # 1. 允许所有登录用户访问 (包括 USER, ADMIN, SUPER_ADMIN, OWNER)
-    # 只要能过 websocket 的 auth 检查 user 肯定存在，这里甚至可以不加 check_role，
-    # 或者显式允许所有角色：
-    check_role(user, [Role.OWNER, Role.SUPER_ADMIN, Role.ADMIN, Role.USER])
+async def get_public_system_config(session: Session, user: Optional[User] = None):
+    # 1. 允许所有用户访问
+    # 如果有用户传入（已登录），则检查权限；如果未登录，则直接跳过权限校验
+    if user:
+        check_role(user, [Role.OWNER, Role.SUPER_ADMIN, Role.ADMIN, Role.USER])
 
     # 2. 定义允许公开的配置 Key (白名单)
     public_keys = [
-        "DEFAULT_KEY_PERMS"
+        "DEFAULT_KEY_PERMS",
+        "CONTACT_INFO_MD"
     ]
 
     # 3. 查询并过滤
@@ -58,6 +60,9 @@ async def get_public_system_config(session: Session, user: User):
     configs = session.exec(select(SystemConfig).where(SystemConfig.key.in_(public_keys))).all()
 
     result = {c.key: c.value for c in configs}
+
+    result["BACKEND_VERSION"] = getattr(settings, "BACKEND_VERSION", "1.0.0")
+
     return result
 
 

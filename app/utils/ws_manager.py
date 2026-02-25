@@ -131,7 +131,13 @@ class WebSocketManager:
             # 传入 binds 参数，确保 User 表去 engine_sys，BlacklistEntry 表去 engine_bl
             with Session(engine_sys, binds=binds) as session:
                 # 1. 免鉴权白名单
-                public_actions = ["auth.login", "auth.send_code", "system.ping", "public.appeal.submit"]
+                public_actions = [
+                    "auth.login",
+                    "auth.send_code",
+                    "system.ping",
+                    "admin.system.get_public",
+                    "public.appeal.submit"
+                ]
 
                 if websocket not in self.authenticated_connections and action not in public_actions:
                     await websocket.send_json({
