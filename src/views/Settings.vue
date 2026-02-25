@@ -97,6 +97,19 @@
               </n-grid>
             </n-card>
 
+            <n-card size="small" title="📝 站点信息" style="margin-bottom: 16px">
+              <n-grid :cols="isMobile ? 1 : 1">
+                <n-form-item-gi label="联系我们">
+                  <n-input
+                      v-model:value="sysConfig.CONTACT_INFO_MD"
+                      type="textarea"
+                      placeholder="### 🤖 关于 Bot&#10;- QQ: 12345678&#10;- 官方群: 87654321&#10;&#10;### 👨‍💻 开发者&#10;邮箱: test@example.com"
+                      :autosize="{ minRows: 4, maxRows: 10 }"
+                  />
+                </n-form-item-gi>
+              </n-grid>
+            </n-card>
+
             <n-card size="small" title="💾 数据管理" style="margin-bottom: 16px">
               <n-descriptions bordered label-placement="left" :column="1" size="small">
                 <n-descriptions-item label="黑名单数据">
@@ -252,7 +265,19 @@
           <div class="about-content">
             <img src="/apple-touch-icon.png" class="about-logo" alt="Logo"/>
             <h3>Shield Admin</h3>
-            <p class="version">Version 1.0.0</p>
+            <div class="version-info">
+              <span style="font-weight: 500;">前端版本：</span>
+              <n-tag type="info" size="small" :bordered="false">
+                v{{ FRONTEND_VERSION }}
+              </n-tag>
+
+              <span style="margin: 0 4px; color: var(--n-text-color-3);">|</span>
+
+              <span style="font-weight: 500;">后端版本：</span>
+              <n-tag :type="backendVersionType" size="small" :bordered="false">
+                {{ backendVersionStr }}
+              </n-tag>
+            </div>
             <p class="desc">
               一个轻量级、高效的黑名单管理系统。<br/>
               前端: Vue 3 + Naive UI + Vite<br/>
@@ -347,7 +372,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted, onUnmounted, ref, watch} from 'vue'
+import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import {
   NButton,
   NCard,
@@ -379,6 +404,7 @@ import {wsClient} from '../api/ws'
 import {presetColors, themeStore} from '../store/theme'
 import {userStore} from "../store/user";
 import router from "../router";
+import {FRONTEND_VERSION, REQUIRED_BACKEND_MAJOR, REQUIRED_BACKEND_MINOR} from "../config";
 
 const message = useMessage()
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -415,6 +441,56 @@ const pendingChanges = ref<Record<string, { oldVal: any, newVal: any }>>({})
 const logDays = ref(30)
 const saving = ref(false)
 const testingBot = ref(false)
+
+// 存储原始版本字符串
+const backendVersion = ref('获取中...')
+
+// 计算显示的文本 (处理加载中、失败等状态)
+const backendVersionStr = computed(() => {
+  const v = backendVersion.value
+  if (['获取中...', '获取失败', '未知'].includes(v)) return v
+  return `v${v}`
+})
+
+// 计算 Tag 颜色类型
+const backendVersionType = computed(() => {
+  const v = backendVersion.value
+  if (['获取中...', '获取失败', '未知'].includes(v)) return 'default'
+
+  try {
+    // 假设版本号格式为 x.y.z
+    const parts = v.split('.')
+    const major = parseInt(parts[0] || '0', 10)
+    const minor = parseInt(parts[1] || '0', 10)
+
+    // 判断逻辑：以 主版本(Major) 和 次版本(Minor) 为准
+    if (major < REQUIRED_BACKEND_MAJOR || (major === REQUIRED_BACKEND_MAJOR && minor < REQUIRED_BACKEND_MINOR)) {
+      return 'error'   // 红色：后端版本过低
+    } else if (major > REQUIRED_BACKEND_MAJOR || (major === REQUIRED_BACKEND_MAJOR && minor > REQUIRED_BACKEND_MINOR)) {
+      return 'warning' // 橙色：后端版本过高（可能有兼容性风险）
+    } else {
+      return 'success' // 绿色：版本匹配
+    }
+  } catch (e) {
+    return 'default'
+  }
+})
+
+// 拉取后端版本
+const fetchBackendVersion = async () => {
+  try {
+    const res: any = await wsClient.call('admin.system.get_public')
+    if (res && res.BACKEND_VERSION) {
+      // 拿到后端版本号（例如 "1.0.0"）
+      backendVersion.value = res.BACKEND_VERSION
+    } else {
+      backendVersion.value = '未知'
+    }
+  } catch (e) {
+    backendVersion.value = '获取失败'
+    console.warn('获取后端版本失败:', e)
+  }
+}
 
 // === 偏好逻辑 ===
 const checkPing = async () => {
@@ -469,7 +545,7 @@ const fetchConfig = async () => {
   }
 }
 
-// === 新增：配置项名称映射（用于弹窗显示中文名） ===
+// === 配置项名称映射（用于弹窗显示中文名） ===
 const fieldLabels: Record<string, string> = {
   SESSION_TIMEOUT: '会话超时',
   CODE_TIMEOUT: '验证码有效期',
@@ -482,7 +558,8 @@ const fieldLabels: Record<string, string> = {
   MAIL_PORT: 'SMTP 端口',
   MAIL_USER: 'SMTP 账号',
   MAIL_PASS: 'SMTP 密码',
-  MAIL_FROM: '发件人地址'
+  MAIL_FROM: '发件人地址',
+  CONTACT_INFO_MD: '联系我们'
 }
 
 const getFieldLabel = (key: string) => fieldLabels[key] || key
@@ -527,7 +604,7 @@ const saveConfig = () => {
   showConfirmModal.value = true
 }
 
-// === 新增：执行真正的保存 ===
+// === 执行真正的保存 ===
 const executeSave = async () => {
   showConfirmModal.value = false
   saving.value = true
@@ -729,6 +806,7 @@ onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
   wsClient.on('*', handleSystemEvent)
+  fetchBackendVersion()
 })
 
 onUnmounted(() => {

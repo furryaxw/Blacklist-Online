@@ -168,6 +168,7 @@ import {
   NCard,
   NDescriptions,
   NDescriptionsItem,
+  NIcon,
   NModal,
   NSpace,
   NSpin,

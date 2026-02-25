@@ -161,6 +161,10 @@
             <div ref="sourceChartRef" style="height: 180px; width: 100%"></div>
           </n-card>
 
+          <n-card title="联系我们" :bordered="false" size="small" class="card-bg mt-3" style="margin-top: 12px;">
+            <div class="contact-markdown" v-html="contactInfoHtml"></div>
+          </n-card>
+
           <n-card size="small" :bordered="false" class="card-bg info-card">
             <n-descriptions label-placement="left" size="small" :column="2">
               <n-descriptions-item label="Python">
@@ -208,11 +212,13 @@ import {
 } from '@vicons/ionicons5'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
+import {marked} from 'marked'
 
 import {wsClient} from '../api/ws'
 import {themeStore} from '../store/theme'
 import {userStore} from "../store/user"
 import {formatToNow} from "../utils/date";
+
 
 const currentUser = computed(() => userStore.userInfo).value
 const isAdmin = ['owner', 'super_admin', 'admin'].includes(currentUser.role)
@@ -234,6 +240,8 @@ const stats = ref({
     server_time: '--:--:--'
   }
 })
+
+const contactInfoHtml = ref('<p style="color: gray; font-size: 12px;">加载中...</p>')
 
 // === 小贴士逻辑 ===
 const tips = [
@@ -350,6 +358,21 @@ const parseDetails = (jsonStr: string) => {
   }
 }
 
+const fetchPublicConfig = async () => {
+  try {
+    const res: any = await wsClient.call('admin.system.get_public')
+    if (res && res.CONTACT_INFO_MD) {
+      // 解析 MD 为 HTML
+      contactInfoHtml.value = await marked.parse(res.CONTACT_INFO_MD)
+    } else {
+      contactInfoHtml.value = '<p style="color: gray; font-size: 12px;">暂无联系信息，请在系统设置中配置。</p>'
+    }
+  } catch (e) {
+    console.warn('获取公开配置失败:', e)
+    contactInfoHtml.value = '<p style="color: #d03050; font-size: 12px;">无法加载联系信息</p>'
+  }
+}
+
 // === 图表逻辑 (Init/Update 分离) ===
 const getChartThemeVars = () => {
   const isDark = themeStore.mode === 'dark' || (themeStore.mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -460,6 +483,7 @@ onMounted(() => {
   nextTick(() => {
     initCharts()
     startPolling() // 启动轮询
+    fetchPublicConfig()
   })
   window.addEventListener('resize', handleResize)
   wsClient.on('*', handleBroadcast)
@@ -597,5 +621,35 @@ onUnmounted(() => {
 
 .p-4 {
   padding: 12px;
+}
+
+.contact-markdown {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--n-text-color);
+}
+
+/* 深浅色模式自适应的简单样式 */
+:deep(.contact-markdown h1),
+:deep(.contact-markdown h2),
+:deep(.contact-markdown h3) {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--n-title-text-color);
+  font-size: 15px;
+}
+
+:deep(.contact-markdown p) {
+  margin: 4px 0;
+}
+
+:deep(.contact-markdown ul) {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+:deep(.contact-markdown a) {
+  color: var(--n-primary-color);
+  text-decoration: none;
 }
 </style>

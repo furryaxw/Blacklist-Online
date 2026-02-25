@@ -3,7 +3,7 @@
     <div class="login-bg"></div>
     <n-card class="login-card" :bordered="false" size="large">
       <div class="header">
-        <img src="/apple-touch-icon.png" class="logo-image" alt="Logo" />
+        <img src="/apple-touch-icon.png" class="logo-image" alt="Logo"/>
         <h2>Shield Admin</h2>
         <p>安全 · 高效 · 简洁</p>
       </div>
@@ -57,6 +57,16 @@
         </n-tab-pane>
       </n-tabs>
     </n-card>
+
+
+    <n-card
+        v-if="contactInfoHtml"
+        size="small"
+        :bordered="false"
+        class="contact-card"
+    >
+      <div class="contact-markdown" v-html="contactInfoHtml"></div>
+    </n-card>
   </div>
 </template>
 
@@ -67,6 +77,7 @@ import {NButton, NCard, NCheckbox, NForm, NFormItem, NInput, NInputGroup, NTabPa
 import {wsClient} from '../api/ws'
 import {userStore} from "../store/user";
 import FingerprintJS from '@fingerprintjs/fingerprintjs'
+import {marked} from "marked";
 
 const router = useRouter()
 const message = useMessage()
@@ -79,6 +90,20 @@ const loading = ref(false)
 const cooldown = ref(0)
 const rememberMe = ref(false)
 const onlyAllowNumber = (value: string) => !value || /^\d+$/.test(value)
+
+const contactInfoHtml = ref('')
+
+// 拉取联系信息
+const fetchPublicConfig = async () => {
+  try {
+    const res = await wsClient.call('admin.system.get_public')
+    if (res && res.CONTACT_INFO_MD) {
+      contactInfoHtml.value = await marked.parse(res.CONTACT_INFO_MD)
+    }
+  } catch (e) {
+    console.warn('获取联系信息失败:', e)
+  }
+}
 
 // 1. 页面加载时：自动拉取 localStorage 中的 QQ 号并填充
 onMounted(async () => {
@@ -98,6 +123,7 @@ onMounted(async () => {
     // 降级处理：生成一个随机指纹或阻止登录，视安全要求而定
     form.value.fingerprint = 'unknown_device_' + Math.random().toString(36).slice(2)
   }
+  await fetchPublicConfig()
 })
 
 const sendCode = async () => {
@@ -157,6 +183,7 @@ const login = async () => {
 .login-container {
   height: 100vh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   position: relative;
@@ -237,5 +264,43 @@ const login = async () => {
   .header p {
     color: rgba(255, 255, 255, 0.7);
   }
+}
+
+.contact-card {
+  max-width: 380px;
+  margin: 16px auto;
+  background: var(--n-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 稍微加点阴影融入背景 */
+}
+
+.contact-markdown {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--n-text-color);
+}
+
+/* 深浅色模式自适应的简单样式 */
+:deep(.contact-markdown h1),
+:deep(.contact-markdown h2),
+:deep(.contact-markdown h3) {
+  margin-top: 0;
+  margin-bottom: 8px;
+  color: var(--n-title-text-color);
+  font-size: 15px;
+}
+
+:deep(.contact-markdown p) {
+  margin: 4px 0;
+}
+
+:deep(.contact-markdown ul) {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+
+:deep(.contact-markdown a) {
+  color: var(--n-primary-color);
+  text-decoration: none;
 }
 </style>

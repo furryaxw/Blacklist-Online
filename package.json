@@ -1,6 +1,6 @@
 {
   "name": "blacklist-admin",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build && tsc --build --clean",
@@ -11,6 +11,7 @@
     "axios": "^1.6.0",
     "dayjs": "^1.11.19",
     "echarts": "^6.0.0",
+    "marked": "^17.0.3",
     "naive-ui": "^2.35.0",
     "nprogress": "^0.2.0",
     "vfonts": "^0.0.3",
