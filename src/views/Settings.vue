@@ -98,12 +98,20 @@
             </n-card>
 
             <n-card size="small" title="📝 站点信息" style="margin-bottom: 16px">
-              <n-grid :cols="isMobile ? 1 : 1">
-                <n-form-item-gi label="联系我们">
+              <n-grid :cols="isMobile ? 1 : 2" :x-gap="24" :y-gap="isMobile ? 12 : 0">
+                <n-form-item-gi label="登录页联系信息">
                   <n-input
-                      v-model:value="sysConfig.CONTACT_INFO_MD"
+                      v-model:value="sysConfig.LOGIN_CONTACT_MD"
                       type="textarea"
-                      placeholder="### 🤖 关于 Bot&#10;- QQ: 12345678&#10;- 官方群: 87654321&#10;&#10;### 👨‍💻 开发者&#10;邮箱: test@example.com"
+                      placeholder="**🤖 关于 Bot**&#10;💡 *提示：获取验证码前，请先加 Bot*&#10;* **QQ**：12345678"
+                      :autosize="{ minRows: 4, maxRows: 10 }"
+                  />
+                </n-form-item-gi>
+                <n-form-item-gi label="控制台联系信息">
+                  <n-input
+                      v-model:value="sysConfig.DASHBOARD_CONTACT_MD"
+                      type="textarea"
+                      placeholder="**📞 联系我们**&#10;* **🤖 Bot QQ**：12345678&#10;* **👨‍💻 开发者**：87654321"
                       :autosize="{ minRows: 4, maxRows: 10 }"
                   />
                 </n-form-item-gi>
@@ -559,7 +567,8 @@ const fieldLabels: Record<string, string> = {
   MAIL_USER: 'SMTP 账号',
   MAIL_PASS: 'SMTP 密码',
   MAIL_FROM: '发件人地址',
-  CONTACT_INFO_MD: '联系我们'
+  LOGIN_CONTACT_MD: '登录页联系信息',
+  DASHBOARD_CONTACT_MD: '控制台联系信息'
 }
 
 const getFieldLabel = (key: string) => fieldLabels[key] || key

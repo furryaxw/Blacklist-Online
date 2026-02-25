@@ -161,7 +161,7 @@
             <div ref="sourceChartRef" style="height: 180px; width: 100%"></div>
           </n-card>
 
-          <n-card title="联系我们" :bordered="false" size="small" class="card-bg mt-3" style="margin-top: 12px;">
+          <n-card title="联系我们" :bordered="false" size="small" class="card-bg mt-3">
             <div class="contact-markdown" v-html="contactInfoHtml"></div>
           </n-card>
 
@@ -361,9 +361,8 @@ const parseDetails = (jsonStr: string) => {
 const fetchPublicConfig = async () => {
   try {
     const res: any = await wsClient.call('admin.system.get_public')
-    if (res && res.CONTACT_INFO_MD) {
-      // 解析 MD 为 HTML
-      contactInfoHtml.value = await marked.parse(res.CONTACT_INFO_MD)
+    if (res && res.DASHBOARD_CONTACT_MD) {
+      contactInfoHtml.value = await marked.parse(res.DASHBOARD_CONTACT_MD)
     } else {
       contactInfoHtml.value = '<p style="color: gray; font-size: 12px;">暂无联系信息，请在系统设置中配置。</p>'
     }
