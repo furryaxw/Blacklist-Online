@@ -105,7 +105,7 @@
         <n-empty v-if="data.length === 0" description="暂无数据" class="py-8"/>
         <div v-for="item in data" :key="item.user_id" class="mobile-card">
           <div class="card-header">
-            <QQUser :qq="item.user_id"/>
+            <QQUser :qq="item.user_id" :data="item"/>
             <n-tag :type="item.disabled ? 'error' : 'success'" size="small" round :bordered="false">
               {{ item.disabled ? '已失效' : '生效中' }}
             </n-tag>
@@ -526,7 +526,7 @@ const columns = computed<DataTableColumns<BlacklistEntry>>(() => {
         title: 'QQ',
         key: 'user_id',
         width: 140,
-        render: (row) => h(QQUser, {qq: row.user_id})
+        render: (row) => h(QQUser, {qq: row.user_id, data: row})
       },
       {
         title: '理由',

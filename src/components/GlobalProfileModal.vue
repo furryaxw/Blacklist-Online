@@ -266,18 +266,27 @@ watch(() => uiStore.showProfileModal, async (val) => {
     profileData.value = {}
     blacklistInfo.value = null // 重置黑名单信息
 
+    // 检查是否存在匹配当前 QQ 的缓存数据
+    const cache = uiStore.initialBlacklistData
+    const hasValidCache = cache && String(cache.user_id) === String(uiStore.currentQq)
+
     try {
-      // 1. 并行请求：获取资料 + 查询黑名单
-      // 注意：admin.blacklist.list 搜索是模糊匹配，需要二次确认精确匹配
-      const [profileRes, blRes] = await Promise.all([
-        wsClient.call('admin.system.get_qq_profile', {qq: uiStore.currentQq}),
-        wsClient.call('admin.blacklist.list', {keyword: uiStore.currentQq, page: 1, size: 5})
-      ])
+      // 1. 并行任务配置
+      const profilePromise = wsClient.call('admin.system.get_qq_profile', {qq: uiStore.currentQq})
+
+      // 如果已经有数据，则返回一个 Resolved Promise 跳过网络请求
+      const blacklistPromise = hasValidCache
+          ? Promise.resolve(null)
+          : wsClient.call('admin.blacklist.list', {keyword: uiStore.currentQq, page: 1, size: 5})
+
+      const [profileRes, blRes] = await Promise.all([profilePromise, blacklistPromise])
 
       profileData.value = profileRes
 
-      // 2. 筛选精确匹配的黑名单记录
-      if (blRes && blRes.items) {
+      // 2. 数据应用逻辑
+      if (hasValidCache) {
+        blacklistInfo.value = cache // 直接使用缓存，减少一次 WS 请求
+      } else if (blRes && blRes.items) {
         const found = blRes.items.find((item: any) => String(item.user_id) === String(uiStore.currentQq))
         if (found) {
           blacklistInfo.value = found
@@ -288,6 +297,7 @@ watch(() => uiStore.showProfileModal, async (val) => {
       error.value = e.message || '获取失败'
     } finally {
       loading.value = false
+      // 这里的 uiStore.initialBlacklistData 会在下一次 openProfile 时被覆盖
     }
   }
 })

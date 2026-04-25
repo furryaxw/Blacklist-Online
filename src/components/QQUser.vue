@@ -19,12 +19,13 @@ import {NTag} from 'naive-ui'
 import {uiStore} from '../store/ui'
 
 const props = defineProps<{
-  qq?: string | number
+  qq?: string | number,
+  data?: any
 }>()
 
 const handleClick = () => {
   if (props.qq) {
-    uiStore.openProfile(props.qq)
+    uiStore.openProfile(props.qq, props.data)
   }
 }
 </script>
