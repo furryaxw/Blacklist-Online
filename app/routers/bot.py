@@ -62,7 +62,8 @@ async def cancel_application(
     # 权限校验逻辑
     # 只有提交该申请的 Bot 实例 (submitter_instance_id) 才能撤回
     if app.submitter_instance_id != token.instance_uuid:
-        raise HTTPException(status_code=403, detail="Permission denied: You can only cancel applications submitted by your own instance")
+        raise HTTPException(status_code=403,
+                            detail="Permission denied: You can only cancel applications submitted by your own instance")
 
     session.delete(app)
     session.commit()

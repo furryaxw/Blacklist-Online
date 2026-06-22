@@ -43,7 +43,7 @@ async def add_whitelist(session: Session, user: User, payload: dict):
         "disabled": True,  # 旧版 Bot 识别此字段 -> 视为移除黑名单
         "reason": entry.reason,
         "operator_id": user.qq,
-        "updated_at": entry.created_at.isoformat(),
+        "updated_at": entry.created_at,
     })))
 
     session.commit()

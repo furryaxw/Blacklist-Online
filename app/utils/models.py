@@ -1,14 +1,13 @@
 import json
-from datetime import datetime, timezone
+import time
 from enum import Enum
 from typing import Optional
 
 from sqlmodel import SQLModel, Field
 
 
-# 统一的时间生成函数
-def utc_now():
-    return datetime.now(timezone.utc)
+def unix_now() -> int:
+    return int(time.time())
 
 
 class Role(str, Enum):
@@ -22,7 +21,7 @@ class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     qq: str = Field(index=True, unique=True)
     role: Role = Field(default=Role.USER)
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: int = Field(default_factory=unix_now)
     subscriptions: str = Field(default=json.dumps({"account": True, "approval": False}))
 
     def get_subscriptions(self) -> dict:
@@ -45,21 +44,21 @@ class ApiKey(SQLModel, table=True):
     instance_uuid: Optional[str] = None
     is_active: bool = True
     created_by: int = Field(default=None, foreign_key="user.id")
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: int = Field(default_factory=unix_now)
 
 
 class BlacklistEntry(SQLModel, table=True):
     user_id: str = Field(primary_key=True)
     reason: str
     disabled: bool = False
-    updated_at: datetime = Field(default_factory=utc_now)
+    updated_at: int = Field(default_factory=unix_now)
     operator_id: Optional[str] = None
     source_id: Optional[str] = None
 
 
 class WhitelistEntry(SQLModel, table=True):
     user_id: str = Field(primary_key=True)
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: int = Field(default_factory=unix_now)
     operator_id: Optional[str] = None
     reason: Optional[str] = None
 
@@ -68,7 +67,7 @@ class SyncEvent(SQLModel, table=True):
     revision: Optional[int] = Field(default=None, primary_key=True)
     action: str  # "upsert" | "delete"
     payload: str  # JSON string
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: int = Field(default_factory=unix_now)
 
 
 class Application(SQLModel, table=True):
@@ -82,9 +81,9 @@ class Application(SQLModel, table=True):
     submitter_instance_id: Optional[str] = None
     status: str = Field(default="pending")  # pending, approved, rejected
     evidence: str = Field(default="[]")
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: int = Field(default_factory=unix_now)
     processed_by: Optional[str] = None
-    processed_at: Optional[datetime] = None
+    processed_at: Optional[int] = None
 
 
 class SystemConfig(SQLModel, table=True):
@@ -98,4 +97,4 @@ class OperationLog(SQLModel, table=True):
     event: str  # 例如 "blacklist.created"
     operator: str = "System"  # 尝试从数据中提取操作人
     details: str = "{}"  # 存储广播数据的 JSON
-    created_at: datetime = Field(default_factory=utc_now)
+    created_at: int = Field(default_factory=unix_now)

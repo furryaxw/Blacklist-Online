@@ -1,8 +1,6 @@
-from datetime import datetime, timedelta, timezone
-
 from sqlmodel import Session, select, func, delete, col
 
-from app.utils.models import User, Role, OperationLog
+from app.utils.models import User, Role, OperationLog, unix_now
 from app.utils.notifier import Notifier
 from app.utils.permissions import check_role
 
@@ -36,7 +34,7 @@ async def get_operation_logs(session: Session, user: User, payload: dict):
 async def clean_operation_logs(session: Session, user: User, payload: dict):
     check_role(user, [Role.OWNER])
     days = int(payload.get("days", 30))
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = unix_now() - days * 86400
 
     # 定义不可删除的敏感事件类型
     immutable_events = [

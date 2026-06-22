@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 
 from app.config import settings
 from app.utils.logging import logger
-from app.utils.models import User, Role, ApiKey, Application, BlacklistEntry, OperationLog, SystemConfig
+from app.utils.models import User, Role, ApiKey, Application, BlacklistEntry, OperationLog, SystemConfig, unix_now
 from app.utils.ws_manager import ws_manager
 
 
@@ -35,8 +35,8 @@ def send_email_sync(config: dict, to_addr: str, subject: str, content: str):
     try:
         smtp_server = config.get("MAIL_HOST")
         smtp_port = int(config.get("MAIL_PORT", 465))
-        smtp_user = config.get("MAIL_USER")       # 登录账号 (如 resend)
-        smtp_pass = config.get("MAIL_PASS")       # 登录密码 (如 API Key)
+        smtp_user = config.get("MAIL_USER")  # 登录账号 (如 resend)
+        smtp_pass = config.get("MAIL_PASS")  # 登录密码 (如 API Key)
         # 获取发件人显示地址
         # 如果配置了 MAIL_FROM 则使用它，否则默认使用登录账号
         mail_from = config.get("MAIL_FROM") or smtp_user
@@ -260,7 +260,7 @@ class Notifier:
             user.qq,
             "account.login",
             {
-                "time": datetime.now(timezone.utc).isoformat(),
+                "time": unix_now(),
                 "ip": ip,
                 "msg": "新设备登录通知"
             },
@@ -362,7 +362,7 @@ class Notifier:
                 f"您好，您对 QQ {app.target_user_id} 的黑名单申诉已处理。\n\n"
                 f"处理结果：{status_cn}\n"
                 f"处理人：{app.applicant_id}\n"
-                f"处理时间：{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+                f"处理时间：{datetime.fromtimestamp(unix_now(), timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n\n"
             )
 
             if app.status == "approved":
@@ -397,7 +397,7 @@ class Notifier:
             "target": entry.user_id,
             "reason": entry.reason,
             "source": source,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": unix_now()
         }
         await ws_manager.broadcast("blacklist.created", data)
         Notifier._save_log(session, "blacklist.created", operator_qq, data)

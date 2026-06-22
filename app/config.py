@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # 后端版本号
-    BACKEND_VERSION: str = "1.1.0"
+    BACKEND_VERSION: str = "1.2.0"
 
     # --- 1. 基础环境配置 (保留在 .env) ---
     PORT: int = 8000

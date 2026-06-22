@@ -1,15 +1,13 @@
 import json
 import uuid
-from datetime import datetime, timezone
 
 from sqlmodel import Session, select
 
 from app.routers.users import _delete_user
 from app.utils.logging import logger
-from app.utils.models import Application, Role, User, BlacklistEntry, SyncEvent
+from app.utils.models import Application, Role, User, BlacklistEntry, SyncEvent, unix_now
 from app.utils.notifier import Notifier
 from app.utils.permissions import check_role
-from app.utils.sessions import rate_limiter
 
 
 async def get_applications(session: Session, user: User, status: str):
@@ -55,7 +53,7 @@ async def handle_application(session: Session, user: User, app_id: str, payload:
 
     app.status = "approved" if action == "approve" else "rejected"
     app.processed_by = user.qq
-    app.processed_at = datetime.now(timezone.utc)
+    app.processed_at = unix_now()
     session.add(app)
 
     # 标记是否为更新操作 (目标已存在即视为更新/覆盖)
@@ -85,7 +83,7 @@ async def handle_application(session: Session, user: User, app_id: str, payload:
                 "operator_id": user.qq,
                 "source_id": app.applicant_id,
                 "disabled": False,
-                "updated_at": entry.updated_at.isoformat()
+                "updated_at": entry.updated_at
             })))
 
             if is_update:
@@ -141,7 +139,7 @@ async def cancel_application(session: Session, payload: dict):
     app = session.get(Application, target_id)
     if app and app.status == "pending":
         app.status = "cancelled"
-        app.processed_at = datetime.now(timezone.utc)
+        app.processed_at = unix_now()
         session.add(app)
         session.commit()
 

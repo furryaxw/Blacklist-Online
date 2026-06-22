@@ -68,6 +68,7 @@ def check_api_permission(required_perm: str):
     """
     权限校验工厂函数：先验证 Token 有效性，再检查是否包含指定权限
     """
+
     async def dependency(key: ApiKey = Depends(verify_bot_token)):
         # 解析权限字段 (例如 "read,write")
         perms = [p.strip() for p in key.permissions.split(",")]

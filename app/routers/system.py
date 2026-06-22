@@ -1,13 +1,13 @@
 import asyncio
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 import httpx
 from sqlmodel import Session, select, delete
 
 from app.config import settings
-from app.utils.models import User, Role, SystemConfig, BlacklistEntry, SyncEvent
+from app.utils.models import User, Role, SystemConfig, BlacklistEntry, SyncEvent, unix_now
 from app.utils.notifier import Notifier, send_bot_msg, send_email_sync
 from app.utils.permissions import check_role
 
@@ -17,6 +17,34 @@ SENSITIVE_KEYS = {
     "ONEBOT_ACCESS_TOKEN",
     "DB_PASSWORD"
 }
+
+
+def _normalize_unix_timestamp(value, fallback: int) -> int:
+    if value is None:
+        return fallback
+    if isinstance(value, (int, float)):
+        return int(value)
+
+    text = str(value).strip()
+    if not text:
+        return fallback
+    if text.isdigit():
+        return int(text)
+
+    normalized = text.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError:
+        try:
+            dt = datetime.strptime(text[:19], "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            return fallback
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return int(dt.timestamp())
 
 
 # === 基础配置管理 ===
@@ -139,6 +167,9 @@ async def import_data(session: Session, user: User, payload: list):
         # 简单的 upsert 逻辑
         if "user_id" not in item: continue
 
+        item = dict(item)
+        item["updated_at"] = _normalize_unix_timestamp(item.get("updated_at"), unix_now())
+
         entry = BlacklistEntry(**item)
         # 强制修正操作人为当前导入者
         entry.operator_id = user.qq
@@ -151,7 +182,7 @@ async def import_data(session: Session, user: User, payload: list):
             "user_id": entry.user_id,
             "reason": entry.reason,
             "disabled": entry.disabled,
-            "updated_at": entry.updated_at.isoformat()
+            "updated_at": entry.updated_at
         })
         session.add(SyncEvent(action="upsert", payload=sync_payload))
         count += 1
@@ -166,7 +197,7 @@ async def clean_logs(session: Session, user: User, payload: dict):
     """清理 SyncEvent (同步日志)"""
     check_role(user, [Role.OWNER])
     days = int(payload.get("days", 30))
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = unix_now() - days * 86400
 
     # SQLModel 的 delete 语句
     statement = delete(SyncEvent).where(SyncEvent.created_at < cutoff)

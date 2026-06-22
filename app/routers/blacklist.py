@@ -1,11 +1,10 @@
 import json
-from datetime import datetime, timezone
 
 from sqlmodel import Session, select, col, func
 
 from app.routers.users import _delete_user
 from app.utils.logging import logger
-from app.utils.models import SyncEvent, Role, BlacklistEntry, User
+from app.utils.models import SyncEvent, Role, BlacklistEntry, User, unix_now
 from app.utils.notifier import Notifier
 from app.utils.permissions import check_role
 
@@ -49,7 +48,7 @@ async def add_blacklist(session: Session, user: User, payload: dict):
     # 确保 entry 如果有 updated_at 也是 UTC，或者依赖 Model 默认值
     # 如果 Model 已经修改为 default_factory=utc_now，这里不需要手动设，但为了保险可以显式刷新一下
     if not entry.updated_at:
-        entry.updated_at = datetime.now(timezone.utc)
+        entry.updated_at = unix_now()
 
     session.merge(entry)
     session.add(SyncEvent(action="upsert", payload=json.dumps({
@@ -58,7 +57,7 @@ async def add_blacklist(session: Session, user: User, payload: dict):
         "operator_id": user.qq,
         "source_id": user.qq,
         "disabled": entry.disabled,
-        "updated_at": entry.updated_at.isoformat()
+        "updated_at": entry.updated_at
     })))
     session.commit()
     logger.warning(f"管理员 [{user.qq}] 手动添加黑名单: {entry.user_id} (原因: {entry.reason})")
@@ -90,7 +89,7 @@ async def update_blacklist(session: Session, user: User, payload: dict):
     old_reason = entry.reason
     entry.reason = new_reason
     entry.operator_id = user.qq
-    entry.updated_at = datetime.now(timezone.utc)
+    entry.updated_at = unix_now()
 
     session.add(entry)
 
@@ -101,7 +100,7 @@ async def update_blacklist(session: Session, user: User, payload: dict):
         "operator_id": user.qq,
         "source_id": entry.source_id,
         "disabled": entry.disabled,
-        "updated_at": entry.updated_at.isoformat()
+        "updated_at": entry.updated_at
     })))
 
     session.commit()
@@ -124,7 +123,7 @@ async def update_blacklist_status(session: Session, user: User, user_id: str, pa
     # 更新状态和操作人
     entry.disabled = new_disabled
     entry.operator_id = user.qq
-    entry.updated_at = datetime.now(timezone.utc)
+    entry.updated_at = unix_now()
     session.add(entry)
 
     # 生成同步事件
@@ -141,7 +140,7 @@ async def update_blacklist_status(session: Session, user: User, user_id: str, pa
             "reason": entry.reason,
             "operator_id": user.qq,
             "disabled": False,
-            "updated_at": entry.updated_at.isoformat()
+            "updated_at": entry.updated_at
         })
         event = SyncEvent(action="upsert", payload=sync_payload)
 

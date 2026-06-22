@@ -1,10 +1,9 @@
 import platform
 import time
-from datetime import datetime, timezone
 
 from sqlmodel import select, desc, text, func, Session
 
-from app.utils.models import OperationLog, BlacklistEntry, Application, User, WhitelistEntry, Role
+from app.utils.models import OperationLog, BlacklistEntry, Application, User, WhitelistEntry, Role, unix_now
 from app.utils.permissions import check_role
 from app.utils.ws_manager import ws_manager
 
@@ -21,10 +20,9 @@ async def get_dashboard_stats(session: Session, user: User):
         select(func.count()).select_from(Application).where(Application.status == "pending")).one()
 
     # --- 2. 今日新增 ---
-    # 获取当前 UTC 时间
-    now_utc = datetime.now(timezone.utc)
-    # 获取 UTC 当天的 0 点
-    today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    # Unix timestamp uses UTC by definition; keep "today" as UTC day start.
+    now_ts = unix_now()
+    today_start = now_ts - (now_ts % 86400)
 
     today_blacklist = session.exec(
         select(func.count())
@@ -62,7 +60,8 @@ async def get_dashboard_stats(session: Session, user: User):
     # --- 5. 最近动态 (Timeline) ---
     recent_logs = session.exec(
         select(OperationLog)
-        .where(OperationLog.event.in_(["app.created", "app.handled", "blacklist.created", "blacklist.updated", "blacklist.deleted"]))
+        .where(OperationLog.event.in_(
+            ["app.created", "app.handled", "blacklist.created", "blacklist.updated", "blacklist.deleted"]))
         .order_by(OperationLog.created_at.desc())
         .limit(10)
     ).all()
@@ -101,6 +100,6 @@ async def get_dashboard_stats(session: Session, user: User):
             "db_status": db_status,
             "db_latency": db_latency,
             "ws_active": ws_count,
-            "server_time": datetime.now(timezone.utc).isoformat()
+            "server_time": unix_now()
         }
     }

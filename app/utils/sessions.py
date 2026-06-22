@@ -6,6 +6,10 @@ from typing import Dict, Any, Optional
 from app.config import settings
 
 
+def unix_now() -> int:
+    return int(time.time())
+
+
 class SessionStore:
     def __init__(self):
         self._store: Dict[str, Dict[str, Any]] = {}
@@ -18,8 +22,8 @@ class SessionStore:
             self._store[token] = {
                 "user_id": user_id,
                 "role": role,
-                "created_at": time.time(),
-                "last_activity": time.time(),
+                "created_at": unix_now(),
+                "last_activity": unix_now(),
                 "bind_ip": ip,
                 "bind_fp": fingerprint
             }
@@ -33,7 +37,7 @@ class SessionStore:
                 return None
 
             # 1. 检查过期
-            if time.time() - session["last_activity"] > settings.SESSION_TIMEOUT:
+            if unix_now() - session["last_activity"] > settings.SESSION_TIMEOUT:
                 del self._store[token]
                 return None
 
@@ -48,9 +52,8 @@ class SessionStore:
                 return None
 
             # 续期 (Sliding Expiration)
-            session["last_activity"] = time.time()
+            session["last_activity"] = unix_now()
             return session
-
 
     def get(self, token: str) -> Optional[Dict[str, Any]]:
         """获取会话并自动续期"""
@@ -60,7 +63,7 @@ class SessionStore:
                 return None
 
             # 检查过期
-            if time.time() - session["last_activity"] > settings.SESSION_TIMEOUT:
+            if unix_now() - session["last_activity"] > settings.SESSION_TIMEOUT:
                 del self._store[token]
                 return None
 
@@ -86,7 +89,7 @@ class SessionStore:
     def list_all(self):
         """列出当前所有活跃会话 (供管理后台使用)"""
         sessions_list = []
-        now = time.time()
+        now = unix_now()
         with self._lock:
             # 遍历并简单过滤已过期的
             for token, data in self._store.items():
@@ -105,7 +108,7 @@ class SessionStore:
 
     def cleanup(self):
         """清理过期会话"""
-        now = time.time()
+        now = unix_now()
         with self._lock:
             expired = [k for k, v in self._store.items() if now - v["last_activity"] > settings.SESSION_TIMEOUT]
             for k in expired:
@@ -123,7 +126,7 @@ class CodeStore:
         with self._lock:
             self._codes[key] = {
                 "code": code,
-                "expires_at": time.time() + settings.CODE_TIMEOUT
+                "expires_at": unix_now() + settings.CODE_TIMEOUT
             }
 
     def verify_code(self, key: str, code: str) -> bool:
@@ -131,7 +134,7 @@ class CodeStore:
             data = self._codes.get(key)
             if not data:
                 return False
-            if time.time() > data["expires_at"]:
+            if unix_now() > data["expires_at"]:
                 del self._codes[key]
                 return False
             # 验证码只能用一次（防止重放）
@@ -141,7 +144,7 @@ class CodeStore:
             return False
 
     def cleanup(self):
-        now = time.time()
+        now = unix_now()
         with self._lock:
             expired = [k for k, v in self._codes.items() if now > v["expires_at"]]
             for k in expired:
@@ -164,7 +167,7 @@ class RateLimiter:
         :param window: 窗口时间 (秒)
         :return: True (允许) / False (拒绝)
         """
-        now = time.time()
+        now = unix_now()
         with self._lock:
             if key not in self._records:
                 self._records[key] = []
@@ -182,7 +185,7 @@ class RateLimiter:
 
     def cleanup(self):
         """清理长期不活跃的限流记录，防止内存泄露"""
-        now = time.time()
+        now = unix_now()
         with self._lock:
             # 清理超过 1 小时没活动的 key
             expired = [k for k, v in self._records.items() if not v or (now - v[-1] > 3600)]

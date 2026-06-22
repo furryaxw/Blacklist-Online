@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 
 from app.utils.database import engine_sys, binds
 from app.utils.logging import logger
-from app.utils.models import User
+from app.utils.models import User, unix_now
 from app.utils.sessions import session_store, rate_limiter
 
 # 定义动作限流规则配置 (次数, 秒数)
@@ -19,7 +19,7 @@ ACTION_LIMITS = {
     "admin.system.backup": (1, 3600),  # 1小时1次
     "public.appeal.submit": (5, 3600),  # 1小时5次
     "admin.blacklist.list": (20, 60),  # 1分钟20次
-    "default": (120, 60)  # 默认 1秒2次
+    "default": (120, 60)  # 默认 1分钟120次
 }
 
 
@@ -158,7 +158,7 @@ class WebSocketManager:
 
                 # [System]
                 if action == "system.ping":
-                    response["data"] = {"timestamp": time.time()}
+                    response["data"] = {"timestamp": unix_now()}
 
                 # [Auth]
                 elif action == "auth.login":
@@ -360,7 +360,7 @@ class WebSocketManager:
             "type": "broadcast",
             "event": event,
             "data": jsonable_encoder(data) if data else {},
-            "timestamp": time.time()
+            "timestamp": unix_now()
         }
 
         if not self.authenticated_connections:
@@ -384,7 +384,7 @@ class WebSocketManager:
             "type": "broadcast",
             "event": event,
             "data": jsonable_encoder(data) if data else {},
-            "timestamp": time.time()
+            "timestamp": unix_now()
         }
 
         # 筛选出属于该用户的连接
@@ -422,7 +422,7 @@ class WebSocketManager:
                     "type": "broadcast",
                     "event": "system.kicked",
                     "data": {"reason": reason},
-                    "timestamp": time.time()
+                    "timestamp": unix_now()
                 })
                 # 给一点时间让消息发出
                 await asyncio.sleep(0.1)
@@ -446,7 +446,7 @@ class WebSocketManager:
             "type": "broadcast",
             "event": event,
             "data": jsonable_encoder(data) if data else {},
-            "timestamp": time.time()
+            "timestamp": unix_now()
         }
 
         # 转为集合以提高查找效率
