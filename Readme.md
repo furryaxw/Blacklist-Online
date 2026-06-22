@@ -170,4 +170,4 @@ WebSocket 入口位于 `/ws`。主要用于管理后台交互，消息格式如�
 
 ## 📄 License
 
-本项目采用 [GPL-3.0 License](LICENSE) 开源许可。
+本项目采用 [AGPL-3.0 License](LICENSE) 开源许可。
