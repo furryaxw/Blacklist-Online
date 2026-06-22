@@ -1,6 +1,6 @@
 // 前端版本号
-export const FRONTEND_VERSION = '1.1.3'
+export const FRONTEND_VERSION = '1.2.0'
 // 兼容的后端主版本号 (Major)
 export const REQUIRED_BACKEND_MAJOR = 1
 // 兼容的后端次版本号 (Minor)
-export const REQUIRED_BACKEND_MINOR = 1
+export const REQUIRED_BACKEND_MINOR = 2

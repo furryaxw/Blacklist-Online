@@ -151,6 +151,7 @@ import {userStore} from './store/user'
 import GlobalProfileModal from './components/GlobalProfileModal.vue'
 import {adjustColor} from './utils/color'
 import {uiStore} from "./store/ui";
+import {formatTime} from "./utils/date";
 
 // 注册语言
 hljs.registerLanguage('json', json)
@@ -340,7 +341,7 @@ const handleGlobalNotify = (data: any, event?: string) => {
   // 4. 新设备登录通知
   if (event === 'account.login') {
     // 后端已通过 exclude_token 排除了本机，能收到说明是别的设备
-    message.warning(`您的账号在别处登录: ${data.ip || '未知IP'} (${data.time?.split(' ')[1] || '刚刚'})`)
+    message.warning(`您的账号在别处登录: ${data.ip || '未知IP'} (${formatTime(data.time, 'HH:mm:ss')})`)
   }
 }
 

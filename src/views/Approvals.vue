@@ -114,7 +114,7 @@
                 <div>处理人:
                   <QQUser :qq="row.processed_by" :show-tag="false"/>
                 </div>
-                <div class="text-xs text-gray">{{ new Date(row.processed_at).toLocaleString() }}</div>
+                <div class="text-xs text-gray">{{ formatTime(row.processed_at) }}</div>
               </div>
             </n-card>
           </div>

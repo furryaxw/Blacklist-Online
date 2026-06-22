@@ -217,7 +217,7 @@ import {marked} from 'marked'
 import {wsClient} from '../api/ws'
 import {themeStore} from '../store/theme'
 import {userStore} from "../store/user"
-import {formatToNow} from "../utils/date";
+import {formatTime, formatToNow} from "../utils/date";
 
 
 const currentUser = computed(() => userStore.userInfo).value
@@ -237,7 +237,7 @@ const stats = ref({
     db_status: 'ok',
     db_latency: 0,
     ws_active: 0,
-    server_time: '--:--:--'
+    server_time: 0
   }
 })
 
@@ -336,13 +336,8 @@ const getEventLabel = (event: string) => {
 }
 
 // 格式化服务端时间 (UTC ISO -> Local HH:mm:ss)
-const formatServerTime = (timeStr: string) => {
-  if (!timeStr || timeStr === '--:--:--') return timeStr
-  try {
-    return dayjs(timeStr).format('HH:mm:ss')
-  } catch {
-    return timeStr
-  }
+const formatServerTime = (timeStr: number) => {
+  return formatTime(timeStr, 'HH:mm:ss')
 }
 
 const parseDetails = (jsonStr: string) => {

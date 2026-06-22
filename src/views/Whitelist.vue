@@ -79,7 +79,7 @@ fullContent:
             <div class="reason">{{ item.reason || '无备注' }}</div>
             <div class="meta">
               <span>添加人: <QQUser :qq="item.operator_id" :show-tag="false" size="small"/></span>
-              <span>{{ new Date(item.created_at).toLocaleDateString() }}</span>
+              <span>{{ formatDate(item.created_at) }}</span>
             </div>
           </div>
         </div>
@@ -94,6 +94,7 @@ import {NAlert, NButton, NCard, NDataTable, NEmpty, NInput, NPopconfirm, NSpace,
 import {wsClient} from '../api/ws'
 import QQUser from '../components/QQUser.vue'
 import {themeStore} from "../store/theme";
+import {formatDate} from "../utils/date";
 
 const message = useMessage()
 const data = ref<any[]>([])
@@ -153,7 +154,7 @@ const columns = [
   {
     title: '添加时间',
     key: 'created_at',
-    render: (row: any) => new Date(row.created_at).toLocaleDateString()
+    render: (row: any) => formatDate(row.created_at)
   },
   {
     title: '操作',

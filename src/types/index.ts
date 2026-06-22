@@ -23,7 +23,7 @@ export interface User {
     id: number
     qq: string
     role: 'owner' | 'super_admin' | 'admin' | 'user'
-    created_at?: string
+    created_at?: number
     subscriptions?: string
 }
 
@@ -34,7 +34,7 @@ export interface BlacklistEntry {
     disabled: boolean
     operator_id?: string
     source_id?: string
-    updated_at: string
+    updated_at: number
 }
 
 // 白名单模型
@@ -42,7 +42,7 @@ export interface WhitelistEntry {
     user_id: string
     reason?: string
     operator_id: string
-    created_at: string
+    created_at: number
 }
 
 // 申请单模型
@@ -53,9 +53,9 @@ export interface Application {
     target_user_id: string
     reason: string
     status: 'pending' | 'approved' | 'rejected' | 'cancelled'
-    created_at: string
+    created_at: number
     processed_by?: string
-    processed_at?: string
+    processed_at?: number
 }
 
 // API Key 模型
@@ -66,7 +66,7 @@ export interface ApiKey {
     permissions: string
     is_active: boolean
     created_by: number
-    created_at: string
+    created_at: number
     created_by_qq?: string
 }
 
@@ -92,7 +92,7 @@ export interface OperationLog {
     event: string
     operator: string
     details: string // JSON string
-    created_at: string
+    created_at: number
 }
 
 // 扩展 Naive UI 的 Column 类型 (可选，方便后续扩展)

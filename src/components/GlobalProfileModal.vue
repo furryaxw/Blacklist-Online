@@ -70,7 +70,7 @@
                     </n-tooltip>
                   </div>
                 </template>
-                {{ formatDate(profileData.regTime) }}
+                {{ formatRegDate(profileData.regTime) }}
               </n-descriptions-item>
 
               <n-descriptions-item label="所在地">
@@ -142,7 +142,7 @@
                     操作人: {{ blacklistInfo.operator_id }}
                     <br v-if="isMobile"/>
                     <span v-else> | </span>
-                    时间: {{ new Date(blacklistInfo.updated_at).toLocaleDateString() }}
+                    时间: {{ formatDate(blacklistInfo.updated_at) }}
                   </div>
                 </div>
               </n-alert>
@@ -177,6 +177,7 @@ import {
 } from 'naive-ui'
 import {uiStore} from '../store/ui'
 import {wsClient} from '../api/ws'
+import {formatDate} from '../utils/date'
 
 const loading = ref(false)
 const error = ref('')
@@ -252,7 +253,7 @@ const constellationText = computed(() => {
   return `${c ? c + '座' : ''} ${s ? s + '年' : ''}`
 })
 
-const formatDate = (ts: number) => {
+const formatRegDate = (ts: number) => {
   if (!ts) return '-'
   return new Date(ts * 1000).toLocaleDateString()
 }

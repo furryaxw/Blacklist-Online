@@ -65,7 +65,7 @@
 
                   <n-thing :title="`${app.type === 'ADD' ? '拉黑' : '移除'} ${app.target_user_id}`">
                     <template #description>
-                      <span class="text-gray text-xs">{{ new Date(app.created_at).toLocaleString() }}</span>
+                      <span class="text-gray text-xs">{{ formatTime(app.created_at) }}</span>
                     </template>
                     <div class="mt-1 text-sm reason-text">{{ app.reason }}</div>
                   </n-thing>
@@ -114,6 +114,7 @@ import {
   useMessage
 } from 'naive-ui'
 import {wsClient} from '../api/ws'
+import {formatTime} from '../utils/date'
 
 const message = useMessage()
 const submitting = ref(false)

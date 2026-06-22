@@ -430,7 +430,7 @@ const handleDirectQuery = async () => {
       disabled: true, // 视为失效状态
       source_id: '',
       operator_id: '',
-      updated_at: '' // 空时间
+      updated_at: 0 // 空时间
     } as BlacklistEntry
   }
 

@@ -31,7 +31,7 @@
            </div>
 
            <div class="card-info">
-             <div>登录时间: {{ new Date(item.created_at * 1000).toLocaleString() }}</div>
+             <div>登录时间: {{ formatTime(item.created_at) }}</div>
              <div>最后活跃: {{ formatLastActive(item.last_activity) }}</div>
            </div>
 
@@ -65,6 +65,7 @@ import {wsClient} from '../api/ws'
 import {themeStore} from '../store/theme'
 import QQUser from '../components/QQUser.vue'
 import {userStore} from "../store/user";
+import {formatTime, toLocalDate} from "../utils/date";
 
 const message = useMessage()
 const list = ref<any[]>([])
@@ -112,7 +113,7 @@ const columns = [
   {
     title: '登录时间',
     key: 'created_at',
-    render: (row: any) => h(NTime, {time: new Date(row.created_at * 1000)})
+    render: (row: any) => h(NTime, {time: toLocalDate(row.created_at) || new Date(0)})
   },
   {
     title: '最后活跃',

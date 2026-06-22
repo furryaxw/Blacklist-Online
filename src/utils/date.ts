@@ -6,16 +6,34 @@ import 'dayjs/locale/zh-cn'
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
 
-/**
- * 格式化时间
- * @param date 时间字符串 (ISO) 或 时间戳
- * @param format 目标格式，默认为 'YYYY-MM-DD HH:mm:ss'
- * @returns 本地时区的时间字符串
- */
-export const formatTime = (date: string | number | Date | null | undefined, format = 'YYYY-MM-DD HH:mm:ss') => {
+// Project timestamps are Unix seconds. Milliseconds and legacy ISO strings are
+// accepted here only as compatibility fallbacks.
+const toDayjs = (date: string | number | Date | null | undefined) => {
     if (!date) return '-'
-    // dayjs 默认会将输入的时间（如果是 UTC ISO 字符串）转换为浏览器所在的本地时区
-    return dayjs(date).format(format)
+    if (typeof date === 'number') {
+        return dayjs(date < 1_000_000_000_000 ? date * 1000 : date)
+    }
+    if (typeof date === 'string' && /^\d+$/.test(date)) {
+        const ts = Number(date)
+        return dayjs(ts < 1_000_000_000_000 ? ts * 1000 : ts)
+    }
+    return dayjs(date)
+}
+
+export const toLocalDate = (date: string | number | Date | null | undefined) => {
+    const parsed = toDayjs(date)
+    if (parsed === '-') return null
+    return parsed.toDate()
+}
+
+export const formatTime = (date: string | number | Date | null | undefined, format = 'YYYY-MM-DD HH:mm:ss') => {
+    const parsed = toDayjs(date)
+    if (parsed === '-') return '-'
+    return parsed.format(format)
+}
+
+export const formatDate = (date: string | number | Date | null | undefined) => {
+    return formatTime(date, 'YYYY-MM-DD')
 }
 
 /**
@@ -24,6 +42,7 @@ export const formatTime = (date: string | number | Date | null | undefined, form
  * @returns
  */
 export const formatToNow = (date: string | number | Date) => {
-    if (!date) return '-'
-    return dayjs(date).fromNow()
+    const parsed = toDayjs(date)
+    if (parsed === '-') return '-'
+    return parsed.fromNow()
 }

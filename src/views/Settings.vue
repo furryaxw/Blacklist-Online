@@ -413,6 +413,7 @@ import {presetColors, themeStore} from '../store/theme'
 import {userStore} from "../store/user";
 import router from "../router";
 import {FRONTEND_VERSION, REQUIRED_BACKEND_MAJOR, REQUIRED_BACKEND_MINOR} from "../config";
+import {formatDate} from "../utils/date";
 
 const message = useMessage()
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -744,7 +745,7 @@ const cleanSyncLogs = async () => {
 }
 
 // 辅助函数
-const getDateStr = () => new Date().toISOString().split('T')[0]
+const getDateStr = () => formatDate(Date.now())
 
 const downloadFile = (data: any, filename: string) => {
   const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'})
